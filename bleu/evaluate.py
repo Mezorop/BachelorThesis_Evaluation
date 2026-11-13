@@ -13,8 +13,6 @@ from pathlib import Path
 def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Calculate text BLEU in-place.")
     parser.add_argument("tsv", type=Path)
-    parser.add_argument("--limit", type=int)
-    parser.add_argument("--force", action="store_true")
     return parser.parse_args()
 
 
@@ -65,9 +63,8 @@ def main() -> None:
         ) from error
 
     metric = BLEU(effective_order=True)
-    selected = rows if args.limit is None else rows[: args.limit]
-    for index, row in enumerate(selected, start=1):
-        if not args.force and row.get("bleu_status") == "ok":
+    for index, row in enumerate(rows, start=1):
+        if row.get("bleu_status") == "ok":
             continue
         try:
             row["bleu"] = float(
@@ -81,7 +78,7 @@ def main() -> None:
         except Exception as error:
             row["bleu_status"] = "error"
             row["bleu_error"] = f"{type(error).__name__}: {error}"
-        print(f"[{index}/{len(selected)}] BLEU={row.get('bleu', '')}")
+        print(f"[{index}/{len(rows)}] BLEU={row.get('bleu', '')}")
     save(path, fields, rows)
 
 

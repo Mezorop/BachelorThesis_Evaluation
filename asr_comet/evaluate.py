@@ -17,8 +17,6 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--model", default="Unbabel/wmt22-comet-da")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--gpus", type=int, choices=(0, 1), default=1)
-    parser.add_argument("--limit", type=int)
-    parser.add_argument("--force", action="store_true")
     return parser.parse_args()
 
 
@@ -72,11 +70,10 @@ def main() -> None:
             "COMET is missing; install asr_comet/requirements.txt in its own environment."
         ) from error
 
-    selected = rows if args.limit is None else rows[: args.limit]
     indices: list[int] = []
     data: list[dict[str, str]] = []
-    for index, row in enumerate(selected):
-        if not args.force and row.get("asr_comet_status") == "ok":
+    for index, row in enumerate(rows):
+        if row.get("asr_comet_status") == "ok":
             continue
         if row.get("whisperx_status") != "ok" or not row.get("asr_transcription", "").strip():
             row["asr_comet_status"] = "error"
@@ -104,9 +101,9 @@ def main() -> None:
         if len(scores) != len(indices):
             raise RuntimeError("COMET returned a different number of scores than inputs.")
         for row_index, score in zip(indices, scores, strict=True):
-            selected[row_index]["asr_comet"] = float(score)
-            selected[row_index]["asr_comet_status"] = "ok"
-            selected[row_index]["asr_comet_error"] = ""
+            rows[row_index]["asr_comet"] = float(score)
+            rows[row_index]["asr_comet_status"] = "ok"
+            rows[row_index]["asr_comet_error"] = ""
 
     save(path, fields, rows)
     print(f"ASR-COMET complete: {len(indices)} rows scored with {args.model}")
