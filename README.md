@@ -69,12 +69,11 @@ End Offset = output_audio_start_delay
 
 ## Installation on VSC-5
 
-After loading the same Python and FFmpeg modules used by the SLURM job:
+After loading the same Python modules used by the SLURM job:
 
 ```bash
 module purge
 module load python/3.12.8-gcc-12.2.0-4y5tbpr
-module load ffmpeg/4.4.1-gcc-12.2.0-d54gcg6
 
 cd "$DATA/translationEvaluation"
 ./setup_environments.sh

@@ -5,6 +5,7 @@
 #SBATCH --partition=zen3_0512_a100x2
 #SBATCH --qos=zen3_0512_a100x2
 #SBATCH --gres=gpu:1
+#SBATCH --ntasks-per-node=1
 
 set -euo pipefail
 
