@@ -31,7 +31,6 @@ mkdir -p \
     "$TORCHINDUCTOR_CACHE_DIR" \
     "$CUDA_CACHE_PATH"
 
-PROJECT_DIRECTORY="${EVALUATION_PROJECT_DIRECTORY:-$DATA/BachelorThesis-Evaluation}"
-RESULT_TSV="${EVALUATION_RESULT_TSV:-$DATA/unchecked_model_results/hibiki_zero/output_results.tsv}"
+PROJECT_DIRECTORY="$DATA/translationEvaluation"
 
-"$PROJECT_DIRECTORY/run_pipeline.sh" "$RESULT_TSV"
+"$PROJECT_DIRECTORY/run_pipeline.sh"

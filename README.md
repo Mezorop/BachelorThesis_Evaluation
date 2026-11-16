@@ -76,16 +76,16 @@ module purge
 module load python/3.12.8-gcc-12.2.0-4y5tbpr
 module load ffmpeg/4.4.1-gcc-12.2.0-d54gcg6
 
-cd "$DATA/BachelorThesis-Evaluation"
+cd "$DATA/translationEvaluation"
 ./setup_environments.sh
 ```
 
-By default, the environments are created under
-`$DATA/venvs/bachelor-thesis-evaluation/`. A different destination directory
-can be passed as an argument to `setup_environments.sh` or set via
-`EVALUATION_VENV_ROOT`. For a site-specific PyTorch/CUDA installation, the
-packages in the WhisperX and COMET environments can be adjusted before running
-the pipeline without affecting the other stages.
+The four evaluation environments are created directly under `$DATA/venvs/` as
+`whisperx`, `bleu`, `asr-bleu`, and `asr-comet`. They are separate from the
+existing Hibiki-Zero environment at `$DATA/venvs/hibiki-zero`. For a
+site-specific PyTorch/CUDA installation, the packages in the WhisperX and COMET
+environments can be adjusted before running the pipeline without affecting the
+other stages.
 
 ## Running the Pipeline
 
@@ -95,10 +95,9 @@ Rows that have already been evaluated successfully will be reused:
 sbatch evaluation_pipeline.slurm
 ```
 
-Important optional environment variables include `WHISPERX_MODEL`,
-`WHISPERX_BATCH_SIZE`, `WHISPERX_COMPUTE_TYPE`, `COMET_MODEL`,
-`COMET_BATCH_SIZE`, `SOURCE_LANGUAGE`, `TARGET_LANGUAGE`, and
-`EVALUATION_DEVICE`.
+The pipeline reads and updates
+`$DATA/unchecked_model_results/hibiki_zero/output_results.tsv` and uses the
+fixed model defaults defined by the evaluation scripts.
 
 ## Expected Input Columns
 

@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Add reference-based ASR-COMET scores to output_results.tsv."""
-
 from __future__ import annotations
 
 import argparse
@@ -19,8 +16,9 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--gpus", type=int, choices=(0, 1), default=1)
     return parser.parse_args()
 
-
-def load(path: Path) -> tuple[list[str], list[dict[str, str]]]:
+#Loads the TSV file
+#Check out whisperx_timing/evaluate.py for a more detailed code break down.
+def read_tsv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         fields = list(reader.fieldnames or [])
@@ -34,8 +32,9 @@ def load(path: Path) -> tuple[list[str], list[dict[str, str]]]:
             raise ValueError("Missing TSV columns: " + ", ".join(missing))
         return fields, list(reader)
 
-
-def save(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
+#Creates a temporary copy of the old tsv file with the additional new COMET scores. If the process passes then the old tsv gets replaced.
+#Check out whisperx_timing/evaluate.py for a more detailed code break down.
+def write_tsv(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
@@ -58,17 +57,12 @@ def save(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
 def main() -> None:
     args = arguments()
     path = args.tsv.expanduser().resolve()
-    fields, rows = load(path)
+    fields, rows = read_tsv(path)
     for name in ("asr_comet", "asr_comet_status", "asr_comet_error"):
         if name not in fields:
             fields.append(name)
 
-    try:
-        from comet import download_model, load_from_checkpoint
-    except ImportError as error:
-        raise RuntimeError(
-            "COMET is missing; install asr_comet/requirements.txt in its own environment."
-        ) from error
+    from comet import download_model, load_from_checkpoint
 
     indices: list[int] = []
     data: list[dict[str, str]] = []
@@ -76,13 +70,15 @@ def main() -> None:
         if row.get("asr_comet_status") == "ok":
             continue
         if row.get("whisperx_status") != "ok" or not row.get("asr_transcription", "").strip():
+
             row["asr_comet_status"] = "error"
             row["asr_comet_error"] = "WhisperX stage is not complete for this row."
             continue
+
         indices.append(index)
         data.append(
             {
-                "src": row["original_transcription"],
+                "src": row["original_transcription"], #in the source language
                 "mt": row["asr_transcription"],
                 "ref": row["expected_translation_of_original_audio"],
             }
@@ -105,7 +101,7 @@ def main() -> None:
             rows[row_index]["asr_comet_status"] = "ok"
             rows[row_index]["asr_comet_error"] = ""
 
-    save(path, fields, rows)
+    write_tsv(path, fields, rows)
     print(f"ASR-COMET complete: {len(indices)} rows scored with {args.model}")
 
 

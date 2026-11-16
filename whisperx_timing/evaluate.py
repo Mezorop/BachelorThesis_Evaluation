@@ -57,7 +57,7 @@ def read_tsv(path: Path) -> tuple[list[str], list[dict[str, Any]]]:
         return list(reader.fieldnames), list(reader)
 
 
-def write_tsv_atomic(
+def write_tsv(
     path: Path, fieldnames: list[str], rows: list[dict[str, object]]
 ) -> None:
     #Creates a temporary file that doesn't interfere with the existing tsv file till it's fully build up
@@ -260,7 +260,7 @@ def main() -> int:
             row["whisperx_status"] = "error"
             row["whisperx_error"] = f"{type(error).__name__}: {error}"
             print(f"[{index}/{row_count}] ERROR: {row['whisperx_error']}")
-        write_tsv_atomic(path, fieldnames, rows)
+        write_tsv(path, fieldnames, rows)
 
     print(f"WhisperX timing complete: {row_count - failures} ok, {failures} failed")
 

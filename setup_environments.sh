@@ -2,26 +2,26 @@
 
 set -euo pipefail
 
-if [[ $# -gt 1 ]]; then
-    echo "Usage: $0 [venv-root]" >&2
-    exit 2
-fi
-
-REPOSITORY_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_ROOT="${1:-${EVALUATION_VENV_ROOT:-${DATA:?DATA must be set}/venvs/bachelor-thesis-evaluation}}"
-PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE:-python}"
+REPOSITORY_DIRECTORY="$DATA/translationEvaluation"
+VENV_ROOT="$DATA/venvs"
 
 create_environment() {
+    #whisperx || bleu || asr-bleu || asr-comet
     local environment_name="$1"
+    #paths to requirement files
     local requirements_file="$2"
+    #$DATA/venvs/whisperx etc.
     local environment_path="$VENV_ROOT/$environment_name"
 
-    "$PYTHON_EXECUTABLE" -m venv "$environment_path"
+    #Venv creation
+    python -m venv "$environment_path"
     "$environment_path/bin/python" -m pip install --upgrade pip
+    #Loading the requirements
     "$environment_path/bin/python" -m pip install -r "$requirements_file"
 }
 
 mkdir -p "$VENV_ROOT"
+#Creates the 4 different environments for the 4 evaluations. (bleu and asr-bleu could actually be put together due to same requirements)
 create_environment whisperx "$REPOSITORY_DIRECTORY/whisperx_timing/requirements.txt"
 create_environment bleu "$REPOSITORY_DIRECTORY/bleu/requirements.txt"
 create_environment asr-bleu "$REPOSITORY_DIRECTORY/asr_bleu/requirements.txt"

@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Add sentence-level ASR-BLEU scores to output_results.tsv."""
-
 from __future__ import annotations
 
 import argparse
@@ -15,8 +12,9 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("tsv", type=Path)
     return parser.parse_args()
 
-
-def load(path: Path) -> tuple[list[str], list[dict[str, str]]]:
+#Loads the TSV file
+#Check out whisperx_timing/evaluate.py for a more detailed code break down.
+def read_tsv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         fields = list(reader.fieldnames or [])
@@ -26,8 +24,9 @@ def load(path: Path) -> tuple[list[str], list[dict[str, str]]]:
             raise ValueError("Missing TSV columns: " + ", ".join(missing))
         return fields, list(reader)
 
-
-def save(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
+#Creates a temporary copy of the old tsv file with the additional new ASR BLEU scores. If the process passes then the old tsv gets replaced.
+#Check out whisperx_timing/evaluate.py for a more detailed code break down.
+def write_tsv(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
@@ -50,18 +49,17 @@ def save(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
 def main() -> None:
     args = arguments()
     path = args.tsv.expanduser().resolve()
-    fields, rows = load(path)
+    fields, rows = read_tsv(path)
     for name in ("asr_bleu", "asr_bleu_status", "asr_bleu_error"):
         if name not in fields:
             fields.append(name)
 
-    try:
-        from sacrebleu.metrics import BLEU
-    except ImportError as error:
-        raise RuntimeError(
-            "SacreBLEU is missing; install asr_bleu/requirements.txt in its own environment."
-        ) from error
+    from sacrebleu.metrics import BLEU
 
+    # "metric" becomes an instance of the class "BLEU" with the configuration effective_order=True which is recommended
+    # for sentence-level BLEU
+    # https://docs.python.org/3.14/tutorial/classes.html#class-objects last visit: 13.11.2026
+    # https://github.com/mjpost/sacrebleu/blob/v2.6.0/sacrebleu/metrics/bleu.py#L121-L122 last visit: 13.11.2026
     metric = BLEU(effective_order=True)
     for index, row in enumerate(rows, start=1):
         if row.get("asr_bleu_status") == "ok":
@@ -69,7 +67,9 @@ def main() -> None:
         try:
             if row.get("whisperx_status") != "ok":
                 raise ValueError("WhisperX stage is not complete for this row.")
-            row["asr_bleu"] = float(
+            # metric.sentence_score computes the BLEU score
+            # https://github.com/mjpost/sacrebleu/blob/v2.6.0/sacrebleu/metrics/base.py#L404-L416 last visit: 13.11.2026
+            row["asr_bleu"] = str(
                 metric.sentence_score(
                     row["asr_transcription"],
                     [row["expected_translation_of_original_audio"]],
@@ -81,7 +81,7 @@ def main() -> None:
             row["asr_bleu_status"] = "error"
             row["asr_bleu_error"] = f"{type(error).__name__}: {error}"
         print(f"[{index}/{len(rows)}] ASR-BLEU={row.get('asr_bleu', '')}")
-    save(path, fields, rows)
+    write_tsv(path, fields, rows)
 
 
 if __name__ == "__main__":
