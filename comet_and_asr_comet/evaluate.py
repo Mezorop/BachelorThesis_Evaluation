@@ -9,7 +9,7 @@ from typing import Any
 
 
 def arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Calculate ASR-COMET in-place.")
+    parser = argparse.ArgumentParser(description="Calculate COMET and ASR-COMET in-place.")
     parser.add_argument("tsv", type=Path)
     parser.add_argument("--model", default="Unbabel/wmt22-comet-da")
     parser.add_argument("--batch-size", type=int, default=16)
@@ -24,6 +24,7 @@ def read_tsv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
         fields = list(reader.fieldnames or [])
         required = (
             "original_transcription",
+            "translated_text",
             "asr_transcription",
             "expected_translation_of_original_audio",
         )
@@ -58,33 +59,57 @@ def main() -> None:
     args = arguments()
     path = args.tsv.expanduser().resolve()
     fields, rows = read_tsv(path)
-    for name in ("asr_comet", "asr_comet_status", "asr_comet_error"):
+    for name in (
+        "comet",
+        "comet_status",
+        "comet_error",
+        "comet_and_asr_comet",
+        "asr_comet_status",
+        "asr_comet_error",
+    ):
         if name not in fields:
             fields.append(name)
 
-    from comet import download_model, load_from_checkpoint
-
-    indices: list[int] = []
+    targets: list[tuple[int, str, str, str]] = []
     data: list[dict[str, str]] = []
     for index, row in enumerate(rows):
-        if row.get("asr_comet_status") == "ok":
-            continue
-        if row.get("whisperx_status") != "ok" or not row.get("asr_transcription", "").strip():
+        if row.get("comet_status") != "ok":
+            translated_text = row.get("translated_text", "").strip()
+            if not translated_text:
+                row["comet_status"] = "error"
+                row["comet_error"] = "translated_text is empty."
+            else:
+                targets.append((index, "comet", "comet_status", "comet_error"))
+                data.append(
+                    {
+                        "src": row["original_transcription"],
+                        "mt": translated_text,
+                        "ref": row["expected_translation_of_original_audio"],
+                    }
+                )
 
-            row["asr_comet_status"] = "error"
-            row["asr_comet_error"] = "WhisperX stage is not complete for this row."
-            continue
-
-        indices.append(index)
-        data.append(
-            {
-                "src": row["original_transcription"], #in the source language
-                "mt": row["asr_transcription"],
-                "ref": row["expected_translation_of_original_audio"],
-            }
-        )
+        if row.get("asr_comet_status") != "ok":
+            asr_transcription = row.get("asr_transcription", "").strip()
+            if row.get("whisperx_status") != "ok" or not asr_transcription:
+                row["asr_comet_status"] = "error"
+                row["asr_comet_error"] = (
+                    "WhisperX stage is not complete for this row."
+                )
+            else:
+                targets.append(
+                    (index, "comet_and_asr_comet", "asr_comet_status", "asr_comet_error")
+                )
+                data.append(
+                    {
+                        "src": row["original_transcription"],
+                        "mt": asr_transcription,
+                        "ref": row["expected_translation_of_original_audio"],
+                    }
+                )
 
     if data:
+        from comet import download_model, load_from_checkpoint
+
         checkpoint = download_model(args.model)
         model = load_from_checkpoint(checkpoint)
         prediction: Any = model.predict(
@@ -94,15 +119,23 @@ def main() -> None:
             progress_bar=True,
         )
         scores = prediction.scores if hasattr(prediction, "scores") else prediction[0]
-        if len(scores) != len(indices):
+        if len(scores) != len(targets):
             raise RuntimeError("COMET returned a different number of scores than inputs.")
-        for row_index, score in zip(indices, scores, strict=True):
-            rows[row_index]["asr_comet"] = float(score)
-            rows[row_index]["asr_comet_status"] = "ok"
-            rows[row_index]["asr_comet_error"] = ""
+        for target, score in zip(targets, scores, strict=True):
+            row_index, score_column, status_column, error_column = target
+            rows[row_index][score_column] = str(float(score))
+            rows[row_index][status_column] = "ok"
+            rows[row_index][error_column] = ""
 
     write_tsv(path, fields, rows)
-    print(f"ASR-COMET complete: {len(indices)} rows scored with {args.model}")
+    comet_count = sum(score_column == "comet" for _, score_column, _, _ in targets)
+    asr_comet_count = sum(
+        score_column == "comet_and_asr_comet" for _, score_column, _, _ in targets
+    )
+    print(
+        f"COMET complete: {comet_count} text rows and "
+        f"{asr_comet_count} ASR rows scored with {args.model}"
+    )
 
 
 if __name__ == "__main__":

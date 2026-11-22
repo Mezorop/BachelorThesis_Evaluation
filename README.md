@@ -12,7 +12,7 @@ output_results.tsv
   -> WhisperX + TTFA/End Offset
   -> Text BLEU
   -> ASR-BLEU
-  -> ASR-COMET
+  -> COMET + ASR-COMET
   -> fully populated output_results.tsv
 ```
 
@@ -21,7 +21,7 @@ output_results.tsv
 | WhisperX/Timing | `whisperx_timing/evaluate.py` | `whisperx` | `asr_transcription`, `ttfa`, `end_offset`, and word boundaries |
 | BLEU | `bleu/evaluate.py` | `bleu` | `bleu` |
 | ASR-BLEU | `asr_bleu/evaluate.py` | `asr-bleu` | `asr_bleu` |
-| ASR-COMET | `asr_comet/evaluate.py` | `asr-comet` | `asr_comet` |
+| COMET/ASR-COMET | `comet_and_asr_comet` | `asr-comet` | `comet`, `asr_comet` |
 
 All existing columns are preserved. Each stage atomically writes its results
 back to the same TSV file. The computationally expensive WhisperX stage saves
@@ -61,11 +61,33 @@ End Offset = output_audio_start_delay
   values are sentence-level BLEU scores on SacreBLEU's 0-to-100 scale;
   `effective_order=True` prevents misleading zero scores for very short
   sentences.
-- ASR-COMET uses `download_model`, `load_from_checkpoint`, and `predict` in
+- COMET and ASR-COMET use `download_model`, `load_from_checkpoint`, and `predict` in
   accordance with the
   [official COMET Python API](https://github.com/Unbabel/COMET#scoring-within-python).
-  `src` is the German source transcript, `mt` is the WhisperX transcript of the
-  translated audio file, and `ref` is the English reference translation.
+  `src` is the German source transcript and `ref` is the English reference
+  translation. For COMET, `mt` is the model's translated text; for ASR-COMET,
+  `mt` is the WhisperX transcript of the translated audio file.
+
+## Third-Party Software and Model Licenses
+
+This repository does not redistribute third-party model weights. WhisperX and
+COMET download the required weights at runtime and store them in external
+caches. The following licenses apply to the software and pretrained models used
+by the evaluation pipeline:
+
+| Component | Purpose | License |
+|---|---|---|
+| [WhisperX 3.8.6](https://github.com/m-bain/whisperX/tree/v3.8.6) | ASR and word-level alignment | [BSD-2-Clause](https://github.com/m-bain/whisperX/blob/v3.8.6/LICENSE) |
+| [Systran/faster-whisper-large-v3](https://huggingface.co/Systran/faster-whisper-large-v3) | English transcription of translated audio | MIT |
+| [WAV2VEC2_ASR_BASE_960H](https://docs.pytorch.org/audio/2.8.0/generated/torchaudio.pipelines.WAV2VEC2_ASR_BASE_960H.html) | English word-level alignment | MIT |
+| [VOXPOPULI_ASR_BASE_10K_DE](https://docs.pytorch.org/audio/2.8.0/generated/torchaudio.pipelines.VOXPOPULI_ASR_BASE_10K_DE.html) | German word-level alignment | CC BY-NC 4.0 |
+| [SacreBLEU 2.6.0](https://github.com/mjpost/sacrebleu) | BLEU and ASR-BLEU calculation | Apache-2.0 |
+| [Unbabel COMET 2.2.7](https://github.com/Unbabel/COMET) | COMET implementation | Apache-2.0 |
+| [Unbabel/wmt22-comet-da](https://huggingface.co/Unbabel/wmt22-comet-da) | COMET and ASR-COMET scoring model | Apache-2.0 |
+
+The German VoxPopuli alignment model is licensed for non-commercial use. The
+models and software must also be cited separately in scientific publications
+according to their respective project and model documentation.
 
 ## Installation on VSC-5
 
