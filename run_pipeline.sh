@@ -19,7 +19,7 @@ VENV_ROOT="$DATA/venvs"
     "$RESULT_TSV"
 
 "$VENV_ROOT/asr-comet/bin/python" -u \
-    "$REPOSITORY_DIRECTORY/asr_comet/evaluate.py" \
+    "$REPOSITORY_DIRECTORY/comet_and_asr_comet/evaluate.py" \
     "$RESULT_TSV"
 
 echo "Evaluation pipeline completed: $RESULT_TSV"
