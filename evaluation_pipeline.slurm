@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #SBATCH -J thesis_evaluation
-#SBATCH -t 08:00:00
+#SBATCH -t 00:15:00
 #SBATCH --partition=zen3_0512_a100x2
 #SBATCH --qos=zen3_0512_a100x2
 #SBATCH --gres=gpu:1
